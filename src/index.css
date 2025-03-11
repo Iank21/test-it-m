@@ -49,6 +49,12 @@ code {
   margin: auto;
   background-color: #ffffff1a;
   text-align: left;
+  padding: 16px;
+  margin-top: 15px;
+}
+
+.about-text p {
+  margin: 5px;
 }
 
 .img-icon {

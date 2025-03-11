@@ -5,8 +5,10 @@ import { LayerGroup, LayersControl, MapContainer, Marker, Popup, TileLayer } fro
 import L from 'leaflet';
 
 const MapComponent: React.FC = () => {
+  // Использует функцию useUnit из библиотеки Effector для получения текущего состояния из хранилища $dataStore
   const data = useUnit($dataStore);
 
+  // Используется хук useEffect, чтобы выполнить код при монтировании компонента
   useEffect(() => {
     const socket = new WebSocket('ws://127.0.0.1:8050/ws/map');
 
@@ -14,6 +16,8 @@ const MapComponent: React.FC = () => {
       console.log('WebSocket connected');
     };
 
+    // Когда сервер отправляет сообщение, данные из него парсятся (преобразуются из строки в объект) 
+    // и передаются в функцию setData, которая обновляет данные в хранилище $dataStore
     socket.onmessage = (event) => {
       const receivedData = JSON.parse(event.data);
       setData(receivedData); // Устанавливаем данные в store
@@ -27,14 +31,15 @@ const MapComponent: React.FC = () => {
       console.log('WebSocket connection closed');
     };
 
+    // Закрытие соединения при размонтировании компонента
     return () => {
       socket.close();
     };
   }, []);
 
-  // массив с температурой 
+  // Получение массива для отображения на слое с температурой 
   const temperature = data
-  .filter(item => item.is_active) // фильтруем по полю is_active, чтобы убрать не активные объекты 
+  .filter(item => item.is_active) // Фильтруем по полю is_active, чтобы убрать не активные объекты 
   .map(item => ({
     uuid: item.uuid,
     name: item.name,
@@ -49,7 +54,7 @@ const MapComponent: React.FC = () => {
     }
   }));
 
-  // массив с давлением 
+  // Получение массива для отображения на слое с давлением 
   const pressure = data
   .filter(item => item.is_active) // фильтруем по полю is_active, чтобы убрать не активные объекты 
   .map(item => ({
@@ -65,9 +70,9 @@ const MapComponent: React.FC = () => {
     }
   }));
 
-  //определяем цвет маркета в зависимости от значений для температуры
+  //Определяем цвет маркера в зависимости от значений для температуры
   const getTemperatureMarkerIcon = (item: any) => {
-    let color = 'gray'; // Цвет по умолчанию
+    let color = ''; 
     if (item.sensor.is_active && item.sensor.correct_supply_temperature) {
       color = 'green'; // Зеленый
     } else if ((item.sensor.is_active && !item.sensor.correct_supply_temperature) || (!item.sensor.is_active && item.sensor.correct_supply_temperature)) {
@@ -85,23 +90,23 @@ const MapComponent: React.FC = () => {
     });
   };
 
-  //определяем цвет маркета в зависимости от значений для температуры
+  //Определяем цвет маркера в зависимости от значений для давления
   const getPressureMarkerIcon = (item: any) => {
     let iconUrl = '';
     if (item.sensor.is_active && item.sensor.correct_pressure) {
-      iconUrl = '../images/icon-green.png'; // Зеленый 
+      iconUrl = './icon-green.png'; // Зеленый 
     } else if ((item.sensor.is_active && !item.sensor.correct_pressure) || (!item.sensor.is_active && item.sensor.correct_pressure)) {
-      iconUrl = '../images/icon-blue.png'; // Синий 
+      iconUrl = './icon-blue.png'; // Синий 
     } else if (!item.sensor.is_active && !item.sensor.correct_pressure) {
-      iconUrl = '../images/icon-red.png'; // Красный
+      iconUrl = './icon-red.png'; // Красный
     }
     
     // Создание иконки
     return L.icon({
       className: 'img-icon',
       iconUrl: iconUrl,
-      iconSize: [20, 20], 
-      iconAnchor: [10, 10],
+      iconSize: [45, 45], 
+      iconAnchor: [20, 45],
     });
   };
 
@@ -120,6 +125,7 @@ const MapComponent: React.FC = () => {
                     <Marker key={item.uuid} position={{lat: item.latitude, lng: item.longitude}} icon={getTemperatureMarkerIcon(item)}>
                       <Popup>
                         <p><b>Название:</b> {item.name}</p>
+                        <p>{item.latitude}{item.longitude}</p>
                         <p><b>Активен ли прибор учета:</b> {item.sensor.is_active ? 'Да' : 'Нет'}</p>
                         <p><b>Температура теплоносителя в подающем трубопроводе:</b> {item.sensor.supply_temperature}</p>
                         <p><b>Температура теплоносителя в обратном трубопроводе:</b> {item.sensor.return_temperature}</p>
@@ -134,7 +140,7 @@ const MapComponent: React.FC = () => {
               <LayerGroup>
                 {pressure.map((item) => (
                   <Marker key={item.uuid} position={{lat: item.latitude, lng: item.longitude}} icon={getPressureMarkerIcon(item)}>
-                    <Popup>
+                    <Popup offset={[1, -20]}>
                       <p><b>Название:</b> {item.name}</p>
                       <p><b>Активен ли прибор учета:</b> {item.sensor.is_active ? 'Да' : 'Нет'}</p>
                       <p><b>Данные о текущем давлении:</b> {item.sensor.pressure}</p>
@@ -148,25 +154,12 @@ const MapComponent: React.FC = () => {
         </MapContainer>
       </div>
       <div className='about-text'>
-        <p>Не активные объекты на карте не отображаются!</p>
-        <div>
-          <div>
-            <p>Легенда для карты температуры:</p>
-            <ul>
-              <li>Зеленый цвет маркера - если активен прибор учета и соответствует договору</li>
-              <li>Синий цвет маркера - если один их параметров не активен</li>
-              <li>Красный цвет  - если оба параметра не активены</li>
-            </ul>
-          </div>
-          <div>
-            <p>Легенда для карты давления:</p>
-            <ul>
-              <li>Зеленый цвет маркера - если активен прибор учета и соответствует договору</li>
-              <li>Синий цвет маркера - если один их параметров не активен</li>
-              <li>Красный цвет  - если оба параметра не активены</li>
-            </ul>
-          </div>
-        </div>
+        <p>Легенда для карты:</p>
+          <ul>
+            <li>Зеленый цвет маркера - прибор активен и значение соответствует договору</li>
+            <li>Синий цвет маркера - один из параметров не соответствует норме</li>
+            <li>Красный цвет маркера - оба параметра не соответствуют норме</li>
+          </ul>
       </div>
     </div>
   );
